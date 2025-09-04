@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+psycopg[binary]
+openai>=1.0.0
+pydantic
+pandas
+pyarrow
+boto3
+tenacity
+python-dotenv
+loguru
+requests

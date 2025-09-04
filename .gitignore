@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Envs
+.env
+
+# Editors/OS
+.DS_Store
+.vscode/
+.idea/
+
+# Docker volumes (local only)
+minio_data/
+pg_data/
+
+# Spark caches
+.ivy2/
+tmp/
+
+# Misc
+*.metadata.json
+*.log

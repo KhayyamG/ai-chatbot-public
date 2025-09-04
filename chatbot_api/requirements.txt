@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+psycopg[binary]
+openai>=1.0.0
+pydantic
+starlette
+requests

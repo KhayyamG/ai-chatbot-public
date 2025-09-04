@@ -1,0 +1,119 @@
+services:
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio12345
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+
+  nessie:
+    image: projectnessie/nessie:latest
+    environment:
+      QUARKUS_HTTP_PORT: "19120"
+    ports:
+      - "19120:19120"
+    restart: unless-stopped
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ai
+      POSTGRES_PASSWORD: ai_pass
+      POSTGRES_DB: ai_chatbot
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./db/setup.sql:/docker-entrypoint-initdb.d/setup.sql
+    restart: unless-stopped
+
+  adminer:
+    image: adminer:latest
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  spark:
+    build:
+      context: ./spark
+      dockerfile: Dockerfile
+    environment:
+      SPARK_MODE: "client"
+      SPARK_EXTRA_CLASSPATH: "/opt/iceberg/*"
+      HOME: "/home/spark"
+      SPARK_JARS_IVY: "/tmp/.ivy2"
+      SPARK_HOME: "/opt/bitnami/spark"
+      PYSPARK_PYTHON: "python3"
+      PYSPARK_DRIVER_PYTHON: "python3"
+      PYTHONPATH: "/opt/spark_jobs:/opt"
+      PATH: "/opt/bitnami/spark/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      JAVA_TOOL_OPTIONS: "-Duser.home=/home/spark -Duser.name=spark -Dhadoop.security.authentication=simple"
+      HADOOP_USER_NAME: "spark"
+      SPARK_NO_DAEMONIZE: "true"
+    command: ["/bin/bash","-lc","mkdir -p /tmp/.ivy2 && tail -f /dev/null"]
+    volumes:
+      - ./spark_jobs:/opt/spark_jobs
+      - ./config.py:/opt/spark_jobs/config.py:ro
+      - ./spark/core-site.xml:/opt/bitnami/spark/conf/core-site.xml:ro
+      - ./spark/spark-defaults.conf:/opt/bitnami/spark/conf/spark-defaults.conf:ro
+    depends_on:
+      - minio
+      - nessie
+      - minio-init
+    restart: unless-stopped
+
+  embed-service:
+    build:
+      context: ./embed_service
+      dockerfile: Dockerfile
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    ports:
+      - "7000:7000"
+    depends_on:
+      - postgres
+    volumes:
+      - ./config.py:/app/config.py:ro
+    restart: unless-stopped
+
+  chatbot-api:
+    build:
+      context: ./chatbot_api
+      dockerfile: Dockerfile
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+    volumes:
+      - ./config.py:/app/config.py:ro
+    restart: unless-stopped
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    entrypoint: ["/bin/sh","-c"]
+    command: >
+      /bin/sh -lc '
+      set -euo pipefail;
+      echo "[minio-init] Waiting for MinIO...";
+      until (mc alias set local http://minio:9000 minio minio12345); do sleep 1; done;
+      mc mb -p local/warehouse || true;
+      echo "[minio-init] Bucket ensured: warehouse";
+      '
+    restart: "no"
+
+volumes:
+  minio_data:
+  pg_data:
+

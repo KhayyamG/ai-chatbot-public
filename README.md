@@ -40,5 +40,4 @@ A minimal RAG-style metadata chatbot powered by:
 - Spark image bundles Iceberg/Nessie/S3 JARs for offline runs.
 - Data lives in Docker volumes `minio_data`, `pg_data` (ignored).
 
-## License
-Add your chosen license here.
+

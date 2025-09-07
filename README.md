@@ -1,3 +1,4 @@
+![image_alt](https://github.com/KhayyamG/ai-chatbot-public/blob/15fe8b3aa105ceb719e27d3cc46a8307db024b60/ai_chatbot.jpg)
 # AI Chatbot (Public)
 
 A minimal RAG-style metadata chatbot powered by:
